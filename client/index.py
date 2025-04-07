@@ -78,7 +78,7 @@ def analyze():
     url_review = f"https://www.amazon.com/product-reviews/{id}/ref=cm_cr_dp_d_show_all_btm?ie=UTF8&reviewerType=all_reviews"
     # Gọi hàm scrape_amazon_reviews để lấy dữ liệu đánh giá từ Amazon
     scrape_amazon_reviews(url_review)
-    time.sleep(5)
+    time.sleep(1)
     result = handle_analyze_sentiment()
     print(result)
     return jsonify({
