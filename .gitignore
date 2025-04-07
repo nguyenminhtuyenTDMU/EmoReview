@@ -2,4 +2,4 @@
 .history
 /.vscode
 /.env
-/client/templates/amazon_cookies.pkl
+/client/amazon_cookies.pkl
