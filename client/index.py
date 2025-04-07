@@ -1,7 +1,6 @@
 import time
 from flask import Flask, render_template, request, jsonify
 import re
-import random
 from getNewReview import scrape_amazon_reviews
 import nltk
 from nltk.sentiment import SentimentIntensityAnalyzer
@@ -13,12 +12,29 @@ sia = SentimentIntensityAnalyzer()
 app = Flask(__name__)
 
 def is_valid_amazon_url(url):
-    # pattern = r"^https?://(www\.)?amazon\.[a-z]{2,3}/[\w-]+/dp/\w+"
-    pattern = r"^https?://(www\.)?amazon\.[a-z]{2,3}/(product-reviews|[\w-]+/dp)/\w+"
-    return re.match(pattern, url)
+    if not url.startswith("https://www.amazon.com"):
+        return False
+    return True
+
+def get_product_id(url):
+    # Trích xuất product_id từ URL
+    match = re.search(r'/dp/(\w+)', url)
+    if match:
+        return match.group(1)
+    return None
+
+def preprocess_text(text):
+    # Loại bỏ dấu câu và emoji
+    text = re.sub(r'[^\w\s,]', '', text)  
+    # Chuyển văn bản thành chữ thường
+    text = text.lower()
+    return text
 
 # Hàm tính toán điểm số cảm xúc
-def analyze1(text):
+def analyze_sentiment(text):
+    # Tiền xử lý văn bản
+    text = preprocess_text(text)
+    # Tính toán điểm số cảm xúc
     score = sia.polarity_scores(text)["compound"]
     if score > 0.05:
         return "positive"
@@ -27,22 +43,22 @@ def analyze1(text):
     else:
         return "neutral"
 
-def analyze_sentiment():
+def handle_analyze_sentiment():
     # Tải dữ liệu đánh giá sản phẩm từ file CSV
     data = pd.read_csv('amazon_reviews.csv')
     reviews = data['Text'].dropna()
-    # Áp dụng phân tích cảm xúc cho từng đánh giá
-    tqdm.pandas(desc="Đang phân tích cảm xúc...")
-    reviews_sentiment = pd.DataFrame(reviews)
-    reviews_sentiment["sentiment"] = reviews.apply(analyze1)
 
-    # 🎯 **Vẽ biểu đồ tròn thể hiện tỷ lệ 3 nhóm cảm xúc**
+    # Áp dụng phân tích cảm xúc cho từng đánh giá
+    reviews_sentiment = pd.DataFrame(reviews)
+    reviews_sentiment["sentiment"] = reviews.apply(analyze_sentiment)
+
+    # Vẽ biểu đồ tròn thể hiện tỷ lệ 3 nhóm cảm xúc
     sentiment_counts = reviews_sentiment["sentiment"].value_counts()
 
     return {
-        "positive":  int(sentiment_counts.get("positive", 0)),  # Chuyển thành int
-        "neutral": int(sentiment_counts.get("neutral", 0)),# Chuyển thành int
-        "negative": int(sentiment_counts.get("negative", 0))   # Nếu không có giá trị "negative" thì mặc định là 0
+        "positive":  int(sentiment_counts.get("positive", 0)),
+        "neutral": int(sentiment_counts.get("neutral", 0)),
+        "negative": int(sentiment_counts.get("negative", 0))
     }
 
 
@@ -54,11 +70,16 @@ def index():
 def analyze():
     data = request.json
     url = data.get("url", "")
-    scrape_amazon_reviews(url)
+    if not url:
+        return jsonify({"error": "URL không được để trống."}), 400
     if not is_valid_amazon_url(url):
         return jsonify({"error": "URL không hợp lệ. Vui lòng nhập một URL sản phẩm Amazon hợp lệ."}), 400
+    id = get_product_id(url)
+    url_review = f"https://www.amazon.com/product-reviews/{id}/ref=cm_cr_dp_d_show_all_btm?ie=UTF8&reviewerType=all_reviews"
+    # Gọi hàm scrape_amazon_reviews để lấy dữ liệu đánh giá từ Amazon
+    scrape_amazon_reviews(url_review)
     time.sleep(5)
-    result = analyze_sentiment()
+    result = handle_analyze_sentiment()
     print(result)
     return jsonify({
         "positive": result["positive"],
