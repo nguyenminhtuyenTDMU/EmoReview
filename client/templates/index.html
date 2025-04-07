@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Phân Tích Cảm Xúc Sản Phẩm Amazon</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #f3f3f3;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            flex-direction: column;
+        }
+        .container {
+            background: white;
+            padding: 20px;
+            border-radius: 12px;
+            box-shadow: 0px 4px 12px rgba(0, 0, 0, 0.1);
+            text-align: center;
+        }
+        input {
+            width: 100%;
+            padding: 10px;
+            margin: 10px 0;
+            border: 1px solid #ccc;
+            border-radius: 8px;
+        }
+        button {
+            background-color: #0078d4;
+            color: white;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: background 0.3s;
+        }
+        button:hover {
+            background-color: #005ea6;
+        }
+        #loading {
+            display: none;
+            color: #0078d4;
+            font-weight: bold;
+        }
+        #chart-container {
+            display: none;
+            margin-top: 20px;
+        }
+        #error-message {
+            color: red;
+            font-weight: bold;
+        }
+    </style>
+    <script>
+        async function analyzeSentiment() {
+            const urlInput = document.getElementById('url').value;
+            const errorMessage = document.getElementById('error-message');
+            const loading = document.getElementById('loading');
+            const chartContainer = document.getElementById('chart-container');
+            errorMessage.textContent = '';
+            loading.style.display = 'block';
+            chartContainer.style.display = 'none';
+
+            try {
+                const response = await fetch('/analyze', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({url: urlInput})
+                });
+                const result = await response.json();
+                loading.style.display = 'none';
+                
+                if (response.ok) {
+                    chartContainer.style.display = 'block';
+                    renderChart(result);
+                } else {
+                    errorMessage.textContent = result.error;
+                }
+            } catch (error) {
+                errorMessage.textContent = 'Đã xảy ra lỗi. Vui lòng thử lại.';
+                loading.style.display = 'none';
+            }
+        }
+
+        function renderChart(data) {
+            const ctx = document.getElementById('sentiment-chart').getContext('2d');
+            new Chart(ctx, {
+                type: 'pie',
+                data: {
+                    labels: ['Tích cực', 'Trung lập', 'Tiêu cực'],
+                    datasets: [{
+                        data: [data.positive, data.neutral, data.negative],
+                        backgroundColor: ['#28a745', '#6c757d', '#dc3545']
+                    }]
+                }
+            });
+        }
+    </script>
+</head>
+<body>
+    <div class="container">
+        <h1 style="color: #005ea6;">Phân Tích Cảm Xúc Sản Phẩm Amazon</h1>
+        <input type="text" id="url" placeholder="Nhập URL sản phẩm Amazon">
+        <button onclick="analyzeSentiment()">Gửi</button>
+        <p id="error-message"></p>
+        <p id="loading">Đang phân tích...</p>
+        <div id="chart-container">
+            <canvas id="sentiment-chart"></canvas>
+        </div>
+    </div>
+</body>
+</html>
