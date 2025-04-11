@@ -3,3 +3,5 @@
 /.vscode
 /.env
 /client/amazon_cookies.pkl
+/client/__pycache__
+/client/amazon_reviews.csv
